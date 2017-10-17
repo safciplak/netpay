@@ -14,3 +14,6 @@
 Route::get('/', function () {
     return view('welcome');
 });
+
+Route::get('test', 'FileController@test');
+Route::get('search', 'FileController@search')->name('search');
