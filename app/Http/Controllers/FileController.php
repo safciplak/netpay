@@ -8,6 +8,7 @@ use App\Utilities\Payroll;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use League\Flysystem\Exception;
 
 class FileController extends Controller
 {
@@ -57,42 +58,14 @@ class FileController extends Controller
         foreach ($dates as $date) {
             $payrolDates[] = $this->payrolls->getDate($date);
         }
-        dd($payrolDates);
 
+        $files = File::all();
+        if($files->isEmpty()){
+            File::truncate();
+            $this->createNestedList();
+            $this->showNestedList();
+        }
 
-//        $file_system = array(
-////            1 documents id 0
-////              parent id
-////             program files id 0
-//
-//            'Documents'     => array(
-//                'Images' => array(
-//                    'Image1.jpg',
-//                    'Image2.jpg',
-//                    'Image3.jpg',
-//                ),
-//                'Works'  => array(
-//                    'Letter.doc',
-//                    'Accountant' => array(
-//                        'Accounting.xls',
-//                        'AnnualReport.xls',
-//                    ),
-//                ),
-//            ),
-//            'Program Files' => array(
-//                'Skype' => array(
-//                    'Skype.exe',
-//                    'Readme.txt',
-//                ),
-//                'Mysql' => array(
-//                    'Mysql.exe',
-//                    'Mysql.com',
-//                ),
-//            ),
-//        );
-
-//        $this->createNestedList();
-//        $this->showNestedList();
 
         return view('files');
     }
@@ -101,15 +74,60 @@ class FileController extends Controller
     {
         $search = request('search');
         $result = DB::table('files')
-            ->where('name', 'like', '%'.$search.'%')
+            ->where('name', 'like', '%' . $search . '%')
             ->get();
 
-//        dd($result);
+        try {
+            $id = $result->first() ? $result->first()->id : null;
+            if ($id != null){
+                $node1 = File::ancestorsAndSelf($id);
+                $node2 = File::descendantsOf($id);
+
+
+                $allItems = new \Illuminate\Database\Eloquent\Collection; //Create empty collection which we know has the merge() method
+                $allItems = $allItems->merge($node1);
+                $allItems = $allItems->merge($node2);
+
+
+                $str = '';
+                foreach ($allItems as $item) {
+                    if (!isset($item->parent)) {
+                        $main = $item;
+                        $mainName = $item->name;
+                    } else {
+                        if ($item->parent->id == $main->id) {
+                            $base = $mainName . "/" . $item->name;
+                        } else {
+                            $str .= $base . "/" . $item->name . "<br>";
+                        }
+                    }
+                }
+                $str = $base . "<br>" . $str;
+                echo strip_tags($str, "<br>");
+            } else {
+                echo "No records found";
+            }
+
+
+        } catch (Exception $e) {
+            echo $e->getMessage();
+        }
+
+
+//        $traverse = function ($categories, $prefix = '-') use (&$traverse) {
+//            foreach ($categories as $category) {
+//                echo PHP_EOL . $prefix . ' ' . $category->name . "<br>";
+//
+//                $traverse($category->children, $prefix . '-');
+//            }
+//        };
+//
+//        dd($traverse($nodes));
+
     }
 
     public function createNestedList():void
     {
-        File::truncate();
         $node = File::create([
             'name' => 'Documents',
         ]);
@@ -124,7 +142,7 @@ class FileController extends Controller
                     'name' => 'Images2.jpg',
                 ],
                 [
-                    'name' => 'Images2.jpg',
+                    'name' => 'Images3.jpg',
                 ],
             ],
         ]);
