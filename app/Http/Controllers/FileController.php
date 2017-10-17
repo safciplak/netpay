@@ -3,19 +3,42 @@
 namespace App\Http\Controllers;
 
 use App\Models\File;
+use App\Utilities\Expense;
+use App\Utilities\Payroll;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class FileController extends Controller
 {
+    /**
+     * @var Expense
+     */
+    private $expenses;
+    /**
+     * @var Payroll
+     */
+    private $payrolls;
+
+
+    /**
+     * FileController constructor.
+     *
+     * @param Expense $expenses
+     * @param Payroll $payrolls
+     */
+    public function __construct(Expense $expenses, Payroll $payrolls)
+    {
+        $this->expenses = $expenses;
+        $this->payrolls = $payrolls;
+    }
 
     public function test()
     {
 //        Expenses Date
         $expenssesDates = [];
         for ($i = 1; $i <= 12; $i++) {
-            $expenssesDates[] = $this->getExpensesDate(Carbon::createFromDate(2012, $i, 1));
+            $expenssesDates[] = $this->expenses->getDate(Carbon::createFromDate(2012, $i, 1));
         }
         // Payrol Date
         $payrolDates = null;
@@ -32,9 +55,9 @@ class FileController extends Controller
             'November',
             'December'];
         foreach ($dates as $date) {
-            $payrolDates[] = $this->getPayrolDates($date);
+            $payrolDates[] = $this->payrolls->getDate($date);
         }
-//        dd($payrolDates);
+        dd($payrolDates);
 
 
 //        $file_system = array(
@@ -190,28 +213,6 @@ class FileController extends Controller
      */
     public function getExpensesDate($date)
     {
-        $day15th = $date->startOfMonth()->addDay(14);
 
-        if (in_array($day15th->dayOfWeek, [Carbon::SATURDAY, Carbon::SUNDAY])) {
-            $monday = $day15th->nextWeekday();
-            $formattedExpensesDate = $monday->format('d/m/Y');
-        } else {
-            $formattedExpensesDate = $day15th->format('d/m/Y');
-        }
-
-        return $formattedExpensesDate;
-    }
-
-    /**
-     * @param $date
-     *
-     * @return array
-     */
-    public function getPayrolDates($date)
-    {
-        $lastFriday = new Carbon("last friday of {$date} 2012");
-        $formattedPayrolDate = $lastFriday->format('d/m/Y');
-        $payrolDates = $formattedPayrolDate;
-        return $payrolDates;
     }
 }
